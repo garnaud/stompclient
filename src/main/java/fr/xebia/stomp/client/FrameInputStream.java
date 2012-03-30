@@ -6,19 +6,16 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StompInputStream implements Closeable {
-	private static final Logger LOGGER = LoggerFactory.getLogger(StompInputStream.class);
+public class FrameInputStream implements Closeable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(FrameInputStream.class);
 	private DataInputStream dataInputStream;
 	private boolean askingClose = false;
 
-	public StompInputStream(Socket socket) {
+	public FrameInputStream(Socket socket) {
 		try {
 			this.dataInputStream = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
 		} catch (IOException e) {
@@ -26,23 +23,12 @@ public class StompInputStream implements Closeable {
 		}
 	}
 
-	public Command command() throws IOException {
-		LOGGER.trace("Command");
-		byte currentByte = dataInputStream.readByte();
-		StringBuilder stringBuilder = new StringBuilder();
-		do {
-			stringBuilder.append((char) currentByte);
-			currentByte = dataInputStream.readByte();
-		} while ((Frame.ENDLINE_BYTE != currentByte) && !askingClose);
-		return Command.valueOf(stringBuilder.toString());
-	}
-
 	/**
-	 * Waiting for a new frame.
+	 * Read a new frame.
 	 * 
 	 * @return the new received frame from the connection
 	 */
-	public Frame frame() {
+	public Frame read() {
 		StringBuilder stringBuilder = null;
 		Command command;
 		HashMap<String, String> header;
@@ -102,24 +88,6 @@ public class StompInputStream implements Closeable {
 		}
 
 		return new Frame(command, header, stringBuilder.toString());
-	}
-
-	public Future<Command> commandAsync() {
-		return Executors.newSingleThreadExecutor().submit(new Callable<Command>() {
-			@Override
-			public Command call() throws Exception {
-				return command();
-			}
-		});
-	}
-
-	public void skip() throws IOException {
-		System.out.println("skip");
-		byte currentByte = dataInputStream.readByte();
-		do {
-			currentByte = dataInputStream.readByte();
-			LOGGER.trace(new String(new byte[] { currentByte }));
-		} while (Frame.NULL_BYTE != currentByte);
 	}
 
 	@Override

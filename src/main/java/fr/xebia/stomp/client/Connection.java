@@ -20,7 +20,7 @@ import fr.xebia.stomp.client.FrameBuilder.SendBuilder;
 
 public class Connection implements Closeable {
 	private final Socket socket;
-	private final StompInputStream stompInputStream;
+	private final FrameInputStream stompInputStream;
 
 	private final static Logger LOGGER = LoggerFactory.getLogger(Connection.class);
 
@@ -29,7 +29,7 @@ public class Connection implements Closeable {
 	protected Connection(Socket socket, Object... socketParams) {
 		this.socket = socket;
 		fillSocketParameters(socket, socketParams);
-		stompInputStream = new StompInputStream(socket);
+		stompInputStream = new FrameInputStream(socket);
 	}
 
 	private void fillSocketParameters(Socket socket, Object... socketParams) {
@@ -130,7 +130,7 @@ public class Connection implements Closeable {
 	}
 
 	public Frame receive() {
-		return stompInputStream.frame();
+		return stompInputStream.read();
 	}
 
 	/**
@@ -154,7 +154,7 @@ public class Connection implements Closeable {
 		Future<Frame> future = executorService.submit(new Callable<Frame>() {
 			@Override
 			public Frame call() {
-				return stompInputStream.frame();
+				return stompInputStream.read();
 			}
 		});
 		try {
@@ -170,7 +170,7 @@ public class Connection implements Closeable {
 		return executorService.submit(new Callable<Frame>() {
 			@Override
 			public Frame call() {
-				return stompInputStream.frame();
+				return stompInputStream.read();
 			}
 		});
 
