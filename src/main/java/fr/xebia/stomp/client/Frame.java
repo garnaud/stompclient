@@ -17,9 +17,9 @@ public class Frame {
 	private final static String ENDLINE = "\n";
 	private final static String NULL = "\00";
 	protected final static String HEADER_SEPARATOR = ":";
-	protected final static byte HEADER_SEPARATOR_BYTE = ":".getBytes(UTF_8)[0];
-	public final static byte NULL_BYTE = NULL.getBytes(UTF_8)[0];
-	public final static byte ENDLINE_BYTE = "\n".getBytes(UTF_8)[0];
+	protected final static byte HEADER_SEPARATOR_BYTE = ":".getBytes(UTF_8)[0]; // = 58
+	public final static byte NULL_BYTE = NULL.getBytes(UTF_8)[0]; // = 0
+	public final static byte ENDLINE_BYTE = "\n".getBytes(UTF_8)[0]; // = 10
 
 	public Frame(Command command, Map<String, String> header, String message) {
 		super();
