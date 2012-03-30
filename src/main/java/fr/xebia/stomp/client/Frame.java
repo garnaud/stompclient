@@ -17,6 +17,7 @@ public class Frame {
 	private final static String ENDLINE = "\n";
 	private final static String NULL = "\00";
 	protected final static String HEADER_SEPARATOR = ":";
+	protected final static byte HEADER_SEPARATOR_BYTE = ":".getBytes(UTF_8)[0];
 	public final static byte NULL_BYTE = NULL.getBytes(UTF_8)[0];
 	public final static byte ENDLINE_BYTE = "\n".getBytes(UTF_8)[0];
 
@@ -83,4 +84,64 @@ public class Frame {
 			return this.frame.header.get("subscription");
 		}
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = (prime * result) + ((command == null) ? 0 : command.hashCode());
+		result = (prime * result) + ((header == null) ? 0 : headerHashCode());
+		result = (prime * result) + ((message == null) ? 0 : message.hashCode());
+		return result;
+	}
+
+	private int headerHashCode() {
+		final int prime = 31;
+		int result = 1;
+		for (Map.Entry<String, String> headerEntry : header.entrySet()) {
+			result = (prime * result) + headerEntry.getKey().hashCode() + headerEntry.getValue().hashCode();
+		}
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		Frame other = (Frame) obj;
+		if (command != other.command) {
+			return false;
+		}
+		if (header == null) {
+			if (other.header != null) {
+				return false;
+			}
+		} else if (!equalsHeaderOf(other)) {
+			return false;
+		}
+		if (message == null) {
+			if (other.message != null) {
+				return false;
+			}
+		} else if (!message.equals(other.message)) {
+			return false;
+		}
+		return true;
+	}
+
+	private boolean equalsHeaderOf(Frame other) {
+		boolean result = true;
+		for (Map.Entry<String, String> headerEntry : header.entrySet()) {
+			result &= other.header.containsKey(headerEntry.getKey()) && (headerEntry.getValue().equals(other.header.get(headerEntry.getValue())));
+		}
+		return result;
+	}
+
 }

@@ -118,12 +118,35 @@ public class SendAndReceiveIntegrationTest {
 	@Before
 	public void setUp() {
 		senderConnection = Connection.login("admin").passcode("password").to("localhost", 61613);
-		receiverConnection1 = Connection.login("admin").passcode("password").to("localhost", 61613, Connection.SocketParam.TIMEOUT, 500);
-		receiverConnection2 = Connection.login("admin").passcode("password").to("localhost", 61613, Connection.SocketParam.TIMEOUT, 500);
+		receiverConnection1 = Connection.login("admin").passcode("password").to("localhost", 61613, Connection.SocketParam.TIMEOUT, 1500);
+		receiverConnection2 = Connection.login("admin").passcode("password").to("localhost", 61613, Connection.SocketParam.TIMEOUT, 1500);
 	}
 
 	@After
 	public void tearDown() {
+		receiverConnection1.subscribe().forClient("receiver1").to("/queue/test");
+		receiverConnection2.subscribe().forClient("receiver2").to("/queue/test");
+		FrameBuilder.send(senderConnection).message("poison pill").to("/queue/test");
+		// empty all queues
+		try {
+			String currentMessage = "";
+			while (!"poison pill".equals(currentMessage)) {
+				Frame receive = receiverConnection1.receive();
+				currentMessage = receive.message;
+				System.out.println(currentMessage);
+			}
+		} catch (Exception e) {
+		}
+		try {
+			String currentMessage = "";
+			while (!"poison pill".equals(currentMessage)) {
+				Frame receive = receiverConnection2.receive();
+				currentMessage = receive.message;
+				System.out.println(currentMessage);
+			}
+		} catch (Exception e) {
+		}
+
 		receiverConnection1.unsubscribe("receiver1");
 		receiverConnection1.unsubscribe("receiver2");
 		senderConnection.closeQuietly();

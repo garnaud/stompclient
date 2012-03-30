@@ -4,7 +4,13 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +23,8 @@ public class Connection implements Closeable {
 	private final StompInputStream stompInputStream;
 
 	private final static Logger LOGGER = LoggerFactory.getLogger(Connection.class);
+
+	private ExecutorService executorService = Executors.newFixedThreadPool(1);
 
 	protected Connection(Socket socket, Object... socketParams) {
 		this.socket = socket;
@@ -43,6 +51,16 @@ public class Connection implements Closeable {
 				try {
 					socket.setSoTimeout((Integer) socketParams[i + 1]);
 					LOGGER.info("Set timeout of {}ms to the socket", socket.getSoTimeout());
+				} catch (SocketException e) {
+					throw new StompException(e);
+				} catch (ClassCastException e) {
+					throw new StompException("Wrong socket value parameter class", e);
+				}
+				break;
+			case RECEIVE_BUFFER_SIZE:
+				try {
+					socket.setReceiveBufferSize((Integer) socketParams[i + 1]);
+					LOGGER.info("Set receive buffer size to {}", socket.getReceiveBufferSize());
 				} catch (SocketException e) {
 					throw new StompException(e);
 				} catch (ClassCastException e) {
@@ -111,14 +129,54 @@ public class Connection implements Closeable {
 		}
 	}
 
-	public Future<Frame> receiveAsync() {
-		return stompInputStream.frameAsync();
-	}
-
 	public Frame receive() {
 		return stompInputStream.frame();
 	}
 
+	/**
+	 * Waiting for at most the given time a new message. Two cases should be observed if a timeout is reached.
+	 * 
+	 * Firstly the server has never sent the waited frame. So there is nothing to do except to attempt to wait again the new message.
+	 * 
+	 * Secondly the frame reception has started but not finished before the timeout. If the socket timeout has not been reached, this connection
+	 * continues to waiting for the remained part of the message. So several problems, hard to predict, can occur if client calls again the receive
+	 * method.
+	 * 
+	 * @param timeout
+	 *            the maximum time to wait
+	 * @param unit
+	 *            the time unit of the timeout argument
+	 * @return the new received frame in this connection
+	 * @throws TimeoutException
+	 *             if the timed is wait out
+	 */
+	public Frame receive(long timeout, TimeUnit unit) throws TimeoutException {
+		Future<Frame> future = executorService.submit(new Callable<Frame>() {
+			@Override
+			public Frame call() {
+				return stompInputStream.frame();
+			}
+		});
+		try {
+			return future.get(timeout, unit);
+		} catch (InterruptedException e) {
+			throw new StompException(e);
+		} catch (ExecutionException e) {
+			throw new StompException(e);
+		}
+	}
+
+	public Future<Frame> receiveAsync() {
+		return executorService.submit(new Callable<Frame>() {
+			@Override
+			public Frame call() {
+				return stompInputStream.frame();
+			}
+		});
+
+	}
+
+	@Override
 	public void close() throws IOException {
 		socket.close();
 	}
@@ -136,7 +194,7 @@ public class Connection implements Closeable {
 	}
 
 	public enum SocketParam {
-		TIMEOUT
+		TIMEOUT, RECEIVE_BUFFER_SIZE
 	}
 
 }

@@ -142,8 +142,8 @@ public class FrameBuilder {
 			return this;
 		}
 
-		public SendBuilder persisted() {
-			frameBuilder.header.put("persistent", "true");
+		public SendBuilder header(String property, String value) {
+			frameBuilder.header.put(property, value);
 			return this;
 		}
 

@@ -10,7 +10,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class StompInputStream implements Closeable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(StompInputStream.class);
 	private DataInputStream dataInputStream;
 	private boolean askingClose = false;
 
@@ -23,7 +27,7 @@ public class StompInputStream implements Closeable {
 	}
 
 	public Command command() throws IOException {
-		System.out.println("Command");
+		LOGGER.trace("Command");
 		byte currentByte = dataInputStream.readByte();
 		StringBuilder stringBuilder = new StringBuilder();
 		do {
@@ -33,45 +37,55 @@ public class StompInputStream implements Closeable {
 		return Command.valueOf(stringBuilder.toString());
 	}
 
+	/**
+	 * Waiting for a new frame.
+	 * 
+	 * @return the new received frame from the connection
+	 */
 	public Frame frame() {
 		StringBuilder stringBuilder = null;
 		Command command;
 		HashMap<String, String> header;
 		try {
 			// Read command
-			System.out.println("Read frame");
+			LOGGER.trace("Read frame");
 			byte currentByte;
 			do {
 				// Skip unnecessary bytes
 				currentByte = dataInputStream.readByte();
 			} while (((Frame.ENDLINE_BYTE == currentByte) || (Frame.NULL_BYTE == currentByte)) && !askingClose);
 			stringBuilder = new StringBuilder();
-			System.out.println("Start read " + new String(new byte[] { currentByte }));
+			LOGGER.trace("Start read " + new String(new byte[] { currentByte }));
 
 			do {
 				stringBuilder.append((char) currentByte);
 				currentByte = dataInputStream.readByte();
 			} while ((Frame.ENDLINE_BYTE != currentByte) && !askingClose);
 			command = Command.valueOf(stringBuilder.toString());
-			System.out.println("Command " + command);
+			LOGGER.trace("Command " + command);
 
 			// Read header
 			header = new HashMap<String, String>();
 			while (!askingClose) {
 				currentByte = dataInputStream.readByte();
 				if (Frame.ENDLINE_BYTE != currentByte) {
+					String key = "";
 					stringBuilder = new StringBuilder();
 					do {
-						stringBuilder.append((char) currentByte);
+						if (Frame.HEADER_SEPARATOR_BYTE == currentByte) {
+							key = stringBuilder.toString();
+							stringBuilder = new StringBuilder();
+						} else {
+							stringBuilder.append((char) currentByte);
+						}
 						currentByte = dataInputStream.readByte();
 					} while ((Frame.ENDLINE_BYTE != currentByte) && !askingClose);
-					String[] headerKeyValue = stringBuilder.toString().split(Frame.HEADER_SEPARATOR);
-					header.put(headerKeyValue[0], headerKeyValue[1]);
+					header.put(key, stringBuilder.toString());
 				} else {
 					break;
 				}
 			}
-			System.out.println("header " + header);
+			LOGGER.trace("header " + header);
 
 			// Read message
 			stringBuilder = new StringBuilder();
@@ -80,7 +94,7 @@ public class StompInputStream implements Closeable {
 				stringBuilder.append((char) currentByte);
 				currentByte = dataInputStream.readByte();
 			}
-			System.out.println("message " + stringBuilder);
+			LOGGER.trace("message " + stringBuilder);
 		} catch (IOException e) {
 			throw new StompException(e);
 		} catch (IllegalArgumentException e) {
@@ -92,16 +106,9 @@ public class StompInputStream implements Closeable {
 
 	public Future<Command> commandAsync() {
 		return Executors.newSingleThreadExecutor().submit(new Callable<Command>() {
+			@Override
 			public Command call() throws Exception {
 				return command();
-			}
-		});
-	}
-
-	public Future<Frame> frameAsync() {
-		return Executors.newSingleThreadExecutor().submit(new Callable<Frame>() {
-			public Frame call() throws Exception {
-				return frame();
 			}
 		});
 	}
@@ -111,10 +118,11 @@ public class StompInputStream implements Closeable {
 		byte currentByte = dataInputStream.readByte();
 		do {
 			currentByte = dataInputStream.readByte();
-			System.out.println(new String(new byte[] { currentByte }));
+			LOGGER.trace(new String(new byte[] { currentByte }));
 		} while (Frame.NULL_BYTE != currentByte);
 	}
 
+	@Override
 	public void close() throws IOException {
 		askingClose = true;
 		if (dataInputStream != null) {
@@ -126,7 +134,7 @@ public class StompInputStream implements Closeable {
 		try {
 			close();
 		} catch (IOException e) {
-			System.out.println(e.getMessage());
+			LOGGER.warn("can't close connection", e);
 		}
 	}
 
