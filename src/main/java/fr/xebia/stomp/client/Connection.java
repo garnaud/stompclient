@@ -94,6 +94,11 @@ public class Connection implements Closeable {
 		if (frame == null) {
 			throw new NullPointerException("Can't send a frame null");
 		}
+		if ((frame.message == null) || (frame.message.length() == 0)) {
+			// An empty message must contain "content-length header
+			// see http://stomp.github.com/stomp-specification-1.1.html#Header_content-length
+			frame.header.put("content-length", "0");
+		}
 		try {
 			socket.getOutputStream().write(frame.getBytes());
 			socket.getOutputStream().flush();
