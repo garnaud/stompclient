@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
 import java.util.HashMap;
 
@@ -21,6 +22,10 @@ public class FrameInputStream implements Closeable {
 		} catch (IOException e) {
 			throw new StompException(e);
 		}
+	}
+
+	public FrameInputStream(InputStream inputStream) {
+		this.dataInputStream = new DataInputStream(inputStream);
 	}
 
 	/**
