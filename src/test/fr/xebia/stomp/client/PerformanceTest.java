@@ -1,13 +1,11 @@
 package fr.xebia.stomp.client;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import fr.xebia.stomp.client.Connection.SocketParam;
@@ -38,7 +36,7 @@ public class PerformanceTest {
 		}
 		long start = System.nanoTime();
 		for (int i = 0; i < ITERATIONS; i++) {
-			Frame frame = connection2.receive();
+			connection2.receive();
 		}
 		long elapsed = (System.nanoTime() - start) / 1000000;
 
@@ -56,7 +54,7 @@ public class PerformanceTest {
 		}
 		long start = System.nanoTime();
 		for (int i = 0; i < ITERATIONS; i++) {
-			Frame frame = connection.receive();
+			connection.receive();
 		}
 		long elapsed = (System.nanoTime() - start) / 1000000;
 		System.out.println("should_receive_10000_messages_in_queue_in_same_connection=" + elapsed + "ms - " + ((ITERATIONS * 1000) / elapsed) + "msg/s");
@@ -76,7 +74,7 @@ public class PerformanceTest {
 			@Override
 			public void run() {
 				for (int i = 0; i < ITERATIONS; i++) {
-					Frame frame = connection2.receive();
+					connection2.receive();
 				}
 				long elapsed = (System.nanoTime() - start) / 1000000;
 				System.out.println("should_receive_10000_messages_in_topic=" + elapsed + "ms - " + ((ITERATIONS * 1000) / elapsed) + "msg/s");
