@@ -50,7 +50,7 @@ public class Connection implements Closeable {
 			case TIMEOUT:
 				try {
 					socket.setSoTimeout((Integer) socketParams[i + 1]);
-					LOGGER.info("Set timeout of {}ms to the socket", socket.getSoTimeout());
+					LOGGER.debug("Set timeout of {}ms to the socket", socket.getSoTimeout());
 				} catch (SocketException e) {
 					throw new StompException(e);
 				} catch (ClassCastException e) {
