@@ -13,7 +13,7 @@ public class Frame {
 	public final String message;
 
 	// Constants
-	private final static Charset UTF_8 = Charset.forName("UTF-8");
+	protected final static Charset UTF_8 = Charset.forName("UTF-8");
 	private final static String ENDLINE = "\n";
 	private final static String NULL = "\00";
 	protected final static String HEADER_SEPARATOR = ":";

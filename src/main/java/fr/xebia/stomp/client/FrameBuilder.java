@@ -106,7 +106,7 @@ public class FrameBuilder {
 			} else if (Command.CONNECTED != serverResponse.command) {
 				throw new IllegalStateException("After a CONNECTION request, receive a response which is not CONNECTED nor ERROR. Received frame is " + serverResponse);
 			}
-			LOGGER.info("Connected to {}:{}, the CONNECTED frame from server is {}", new Object[] { host, port, serverResponse });
+			LOGGER.debug("Connected to {}:{}, the CONNECTED frame from server is {}", new Object[] { host, port, serverResponse });
 			return localConnection;
 		}
 	}
