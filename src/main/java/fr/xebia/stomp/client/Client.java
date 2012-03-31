@@ -14,17 +14,20 @@ import java.util.concurrent.Future;
 public class Client {
 
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException {
-		Connection connection = Connection.login("admin").passcode("password").to("localhost", 61613);
-		System.out.println(connection);
-		connection.subscribe().forClient("you").to("/queue/a");
-		Future<Frame> futureReceivedMessage = connection.receiveAsync();
-		connection.send(FrameBuilder.send().message("coucou").to("/queue/a"));
-		try {
-			System.out.println("Message received:" + futureReceivedMessage.get());
-		} catch (ExecutionException e) {
-			e.printStackTrace();
-		}
-		connection.closeQuietly();
+		// Connection connection = Connection.login("admin").passcode("password").to("localhost", 61613);
+		// System.out.println(connection);
+		// connection.subscribe().forClient("you").to("/queue/a");
+		// Future<Frame> futureReceivedMessage = connection.receiveAsync();
+		// connection.send(FrameBuilder.send().message("coucou").to("/queue/a"));
+		// try {
+		// System.out.println("Message received:" + futureReceivedMessage.get());
+		// } catch (ExecutionException e) {
+		// e.printStackTrace();
+		// }
+		// connection.closeQuietly();
+		System.out.println(Frame.ENDLINE_BYTE);
+		System.out.println(Frame.HEADER_SEPARATOR_BYTE);
+		System.out.println(Frame.NULL_BYTE);
 	}
 
 	public static void test(String[] args) throws UnknownHostException, IOException, InterruptedException {
@@ -72,6 +75,7 @@ public class Client {
 			}
 		}
 
+		@Override
 		public void run() {
 			try {
 				while (true) {
