@@ -3,61 +3,103 @@ package fr.xebia.stomp.client;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.After;
 import org.junit.Test;
 
+import com.google.common.collect.Sets;
+
 import fr.xebia.stomp.client.Connection.SocketParam;
 
 public class PerformanceTest {
-	private static final int ITERATIONS = 40000;
+	private static final int NB_OF_MESSAGES = 100;
 	private List<Connection> connections = new ArrayList<Connection>();
+	private static final String CONTENT = "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest";
 
-	@After
-	public void tearDown() {
-		for (Connection connection : connections) {
-			connection.unsubscribe("receiver1");
-			connection.unsubscribe("receiver2");
-			connection.closeQuietly();
+	private Connection connectionSender;
+	private Connection connectionReceiver;
+
+	@Test
+	public void sendAndReceiveMessagesInQueue() throws UnknownHostException, IOException {
+		System.out.println("Normal\n\n");
+		List<Integer> sizes = Arrays.asList(0, 1, 10, 100, 500, 1000, 10000, 100000, 500000, 1000000);
+		for (Integer size : sizes) {
+			setUp();
+			sendAndReceiveMessagesInQueueOfSize(size, null);
+			tearDown();
 		}
 	}
 
 	@Test
-	public void should_receive_10000_messages_in_queue() throws UnknownHostException, IOException {
-		Connection connection1 = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 5000);
-		Connection connection2 = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 5000);
-		connections.add(connection1);
-		connections.add(connection2);
-		FrameBuilder.subscribe(connection2).forClient("receiver1").to("/queue/test");
-
-		for (int i = 0; i < ITERATIONS; i++) {
-			FrameBuilder.send(connection1).header("persistent", "false").message("test").to("/queue/test");
+	public void sendAndReceiveMessagesInQueueWithContentLength() throws UnknownHostException, IOException {
+		System.out.println("With content length\n\n");
+		List<Integer> sizes = Arrays.asList(0, 1, 10, 100, 500, 1000, 10000, 100000, 500000, 1000000);
+		for (Integer size : sizes) {
+			setUp();
+			Map<String, String> headers = new HashMap<String, String>();
+			headers.put("content-length", String.valueOf(size));
+			sendAndReceiveMessagesInQueueOfSize(size, headers);
+			tearDown();
 		}
-		long start = System.nanoTime();
-		for (int i = 0; i < ITERATIONS; i++) {
-			connection2.receive();
-		}
-		long elapsed = (System.nanoTime() - start) / 1000000;
-
-		System.out.println("should_receive_10000_messages_in_queue=" + elapsed + "ms - " + ((ITERATIONS * 1000) / elapsed) + "msg/s");
 	}
 
 	@Test
-	public void should_receive_10000_messages_in_queue_in_same_connection() throws UnknownHostException, IOException {
-		Connection connection = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 5000);
-		connections.add(connection);
-		FrameBuilder.subscribe(connection).forClient("receiver1").to("/queue/test");
+	public void sendAndReceiveMessagesInQueueWithContentLengthAndPersistence() throws UnknownHostException, IOException {
+		System.out.println("With content length and persistence\n\n");
+		List<Integer> sizes = Arrays.asList(0, 1, 10, 100, 500, 1000, 10000, 100000, 500000, 1000000);
+		for (Integer size : sizes) {
+			setUp();
+			Map<String, String> headers = new HashMap<String, String>();
+			headers.put("content-length", String.valueOf(size));
+			headers.put("persistent", "true");
+			sendAndReceiveMessagesInQueueOfSize(size, headers);
+			tearDown();
+		}
+	}
 
-		for (int i = 0; i < ITERATIONS; i++) {
-			FrameBuilder.send(connection).header("persistent", "false").message("test").to("/queue/test");
+	private void sendAndReceiveMessagesInQueueOfSize(int size, Map<String, String> headers) throws UnknownHostException, IOException {
+		// Build frame
+		long expireTime = System.currentTimeMillis() + 10000; // Expires in 10s
+		Frame frame = FrameBuilder.send()//
+				.header("persistent", "false")//
+				.header("expires", Long.toString(expireTime))//
+				.message(of(size))//
+				.to("/queue/test");
+		if (headers != null) {
+			for (Map.Entry<String, String> header : headers.entrySet()) {
+				frame.header.put(header.getKey(), header.getValue());
+			}
 		}
+		// Send frames
+		send(frame, size);
+
+		// Receive frames
+		receive(size);
+	}
+
+	private void receive(int size) {
 		long start = System.nanoTime();
-		for (int i = 0; i < ITERATIONS; i++) {
-			connection.receive();
+		for (int i = 0; i < NB_OF_MESSAGES; i++) {
+			connectionReceiver.receive();
 		}
-		long elapsed = (System.nanoTime() - start) / 1000000;
-		System.out.println("should_receive_10000_messages_in_queue_in_same_connection=" + elapsed + "ms - " + ((ITERATIONS * 1000) / elapsed) + "msg/s");
+		long elapsedInMillis = (System.nanoTime() - start) / 1000000;
+		System.out.println("Receive " + NB_OF_MESSAGES + " messages of " + size + "bytes in " + elapsedInMillis + "ms - " + ((NB_OF_MESSAGES * 1000) / elapsedInMillis) + "msg/s - "
+				+ ((NB_OF_MESSAGES * size * 1000) / elapsedInMillis) + "bps");
+	}
+
+	private void send(Frame frame, int size) {
+		long start = System.nanoTime();
+		for (int i = 0; i < NB_OF_MESSAGES; i++) {
+			connectionSender.send(frame);
+		}
+		long elapsedInMillis = (System.nanoTime() - start) / 1000000;
+		System.out.println("Send " + NB_OF_MESSAGES + " messages of " + size + "bytes in " + elapsedInMillis + "ms - " + ((NB_OF_MESSAGES * 1000) / elapsedInMillis) + "msg/s - "
+				+ ((NB_OF_MESSAGES * size * 1000) / elapsedInMillis) + "bps");
+
 	}
 
 	@Test
@@ -66,23 +108,45 @@ public class PerformanceTest {
 		final Connection connection2 = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 5000);
 		connections.add(connection1);
 		connections.add(connection2);
-		FrameBuilder.subscribe(connection2).forClient("receiver2").to("/topic/test");
+		FrameBuilder.subscribe(connection2).forClient("receiver").to("/topic/test");
 		Thread.sleep(3000);
 		final long start = System.nanoTime();
 		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
-				for (int i = 0; i < ITERATIONS; i++) {
+				for (int i = 0; i < NB_OF_MESSAGES; i++) {
 					connection2.receive();
 				}
 				long elapsed = (System.nanoTime() - start) / 1000000;
-				System.out.println("should_receive_10000_messages_in_topic=" + elapsed + "ms - " + ((ITERATIONS * 1000) / elapsed) + "msg/s");
+				System.out.println("should_receive_10000_messages_in_topic=" + elapsed + "ms - " + ((NB_OF_MESSAGES * 1000) / elapsed) + "msg/s");
 			}
 		}).start();
-		for (int i = 0; i < ITERATIONS; i++) {
-			FrameBuilder.send(connection1).header("persistent", "false").message("test").to("/topic/test");
+		for (int i = 0; i < NB_OF_MESSAGES; i++) {
+			FrameBuilder.send(connection1).header("persistent", "false").message(CONTENT).to("/topic/test");
 		}
-		Thread.sleep(10000);
+		Thread.sleep(5000);
+	}
+
+	public void setUp() {
+		connectionSender = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 10000);
+		connectionReceiver = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 10000);
+		connections.add(connectionSender);
+		connections.add(connectionReceiver);
+		FrameBuilder.subscribe(connectionReceiver).forClient("receiver").to("/queue/test");
+	}
+
+	@After
+	public void tearDown() {
+		for (Connection connection : connections) {
+			connection.unsubscribe("receiver");
+			connection.closeQuietly();
+		}
+	}
+
+	private String of(int size) {
+		byte[] messageBytes = new byte[size];
+		Arrays.fill(messageBytes, "a".getBytes()[0]);
+		return new String(messageBytes);
 	}
 }
