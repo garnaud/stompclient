@@ -79,11 +79,22 @@ public class FrameInputStream implements Closeable {
 			LOGGER.trace("header " + header);
 
 			// Read message
-			stringBuilder = new StringBuilder();
-			currentByte = dataInputStream.readByte();
-			while ((Frame.NULL_BYTE != currentByte) && !askingClose) {
-				stringBuilder.append((char) currentByte);
+			if (header.containsKey("content-length")) {
+				stringBuilder = new StringBuilder();
+				int length = Integer.valueOf(header.get("content-length"));
+				byte[] buffer = new byte[length];
+				int read = length;
+				while (read > 0) {
+					read = read - dataInputStream.read(buffer, 0, length);
+					stringBuilder.append(new String(buffer));
+				}
+			} else {
+				stringBuilder = new StringBuilder();
 				currentByte = dataInputStream.readByte();
+				while ((Frame.NULL_BYTE != currentByte) && !askingClose) {
+					stringBuilder.append((char) currentByte);
+					currentByte = dataInputStream.readByte();
+				}
 			}
 			LOGGER.trace("message " + stringBuilder);
 		} catch (IOException e) {
