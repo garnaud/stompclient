@@ -315,4 +315,67 @@ public class FrameBuilder {
 	public static NackBuilder nack() {
 		return new NackBuilder(new FrameBuilder().command(Command.NACK));
 	}
+
+	// Begin
+	public static class BeginBuilder {
+		private final FrameBuilder frameBuilder;
+
+		protected BeginBuilder(FrameBuilder frameBuilder) {
+			this.frameBuilder = frameBuilder;
+		}
+
+		public Frame to(String transaction) {
+			return frameBuilder.header("transaction", transaction).end();
+		}
+	}
+
+	public static BeginBuilder begin(Connection connection) {
+		return new BeginBuilder(new FrameBuilder(connection).command(Command.BEGIN));
+	}
+
+	public static BeginBuilder begin() {
+		return new BeginBuilder(new FrameBuilder().command(Command.BEGIN));
+	}
+
+	// Commit
+	public static class CommitBuilder {
+		private final FrameBuilder frameBuilder;
+
+		protected CommitBuilder(FrameBuilder frameBuilder) {
+			this.frameBuilder = frameBuilder;
+		}
+
+		public Frame to(String transaction) {
+			return frameBuilder.header("transaction", transaction).end();
+		}
+	}
+
+	public static CommitBuilder commit(Connection connection) {
+		return new CommitBuilder(new FrameBuilder(connection).command(Command.COMMIT));
+	}
+
+	public static CommitBuilder commit() {
+		return new CommitBuilder(new FrameBuilder().command(Command.COMMIT));
+	}
+
+	// Abort
+	public static class AbortBuilder {
+		private final FrameBuilder frameBuilder;
+
+		protected AbortBuilder(FrameBuilder frameBuilder) {
+			this.frameBuilder = frameBuilder;
+		}
+
+		public Frame to(String transaction) {
+			return frameBuilder.header("transaction", transaction).end();
+		}
+	}
+
+	public static AbortBuilder abort(Connection connection) {
+		return new AbortBuilder(new FrameBuilder(connection).command(Command.COMMIT));
+	}
+
+	public static AbortBuilder abort() {
+		return new AbortBuilder(new FrameBuilder().command(Command.COMMIT));
+	}
 }
