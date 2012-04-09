@@ -1,6 +1,7 @@
 package fr.xebia.stomp.client;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -83,11 +84,13 @@ public class FrameInputStream implements Closeable {
 				stringBuilder = new StringBuilder();
 				int length = Integer.valueOf(header.get("content-length"));
 				byte[] buffer = new byte[length];
-				int read = length;
-				while (read > 0) {
-					read = read - dataInputStream.read(buffer, 0, length);
-					stringBuilder.append(new String(buffer));
+				int read = 0;
+				ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+				while ((read != -1) && (byteArrayOutputStream.size() < length)) {
+					read = dataInputStream.read(buffer, 0, length - byteArrayOutputStream.size());
+					byteArrayOutputStream.write(buffer, 0, read);
 				}
+				stringBuilder.append(byteArrayOutputStream.toString());
 			} else {
 				stringBuilder = new StringBuilder();
 				currentByte = dataInputStream.readByte();
@@ -102,7 +105,6 @@ public class FrameInputStream implements Closeable {
 		} catch (IllegalArgumentException e) {
 			throw new StompException("May be a problem occurs with parsing. Current string builder is '" + stringBuilder + "'", e);
 		}
-
 		return new Frame(command, header, stringBuilder.toString());
 	}
 

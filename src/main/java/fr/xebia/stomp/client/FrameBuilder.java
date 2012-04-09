@@ -281,4 +281,38 @@ public class FrameBuilder {
 		return new AckBuilder(new FrameBuilder(connection).command(Command.ACK));
 	}
 
+	public static AckBuilder ack() {
+		return new AckBuilder(new FrameBuilder().command(Command.ACK));
+	}
+
+	// Nack
+	public static class NackBuilder {
+		private final FrameBuilder frameBuilder;
+
+		protected NackBuilder(FrameBuilder frameBuilder) {
+			this.frameBuilder = frameBuilder;
+		}
+
+		public NackBuilder messageId(String messageId) {
+			frameBuilder.header("message-id", messageId);
+			return this;
+		}
+
+		public NackBuilder transaction(String transaction) {
+			frameBuilder.header("transaction", transaction);
+			return this;
+		}
+
+		public Frame to(String subscription) {
+			return frameBuilder.header("subscription", subscription).end();
+		}
+	}
+
+	public static NackBuilder nack(Connection connection) {
+		return new NackBuilder(new FrameBuilder(connection).command(Command.NACK));
+	}
+
+	public static NackBuilder nack() {
+		return new NackBuilder(new FrameBuilder().command(Command.NACK));
+	}
 }

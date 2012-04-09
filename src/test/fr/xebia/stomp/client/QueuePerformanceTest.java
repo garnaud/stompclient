@@ -11,21 +11,21 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
 
-import com.google.common.collect.Sets;
+import static org.junit.Assert.assertEquals;
 
 import fr.xebia.stomp.client.Connection.SocketParam;
 
-public class PerformanceTest {
-	private static final int NB_OF_MESSAGES = 100;
+public class QueuePerformanceTest {
+	private static final long MAX_NUMBER_OF_MESSAGES = 10000;
+	private static final long MAX_SIZE_OF_QUEUE_IN_BYTES = 200000000;
 	private List<Connection> connections = new ArrayList<Connection>();
-	private static final String CONTENT = "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest";
 
 	private Connection connectionSender;
 	private Connection connectionReceiver;
 
 	@Test
 	public void sendAndReceiveMessagesInQueue() throws UnknownHostException, IOException {
-		System.out.println("Normal\n\n");
+		System.out.println("\nsendAndReceiveMessagesInQueue\n");
 		List<Integer> sizes = Arrays.asList(0, 1, 10, 100, 500, 1000, 10000, 100000, 500000, 1000000);
 		for (Integer size : sizes) {
 			setUp();
@@ -36,7 +36,7 @@ public class PerformanceTest {
 
 	@Test
 	public void sendAndReceiveMessagesInQueueWithContentLength() throws UnknownHostException, IOException {
-		System.out.println("With content length\n\n");
+		System.out.println("\nsendAndReceiveMessagesInQueueWithContentLength\n");
 		List<Integer> sizes = Arrays.asList(0, 1, 10, 100, 500, 1000, 10000, 100000, 500000, 1000000);
 		for (Integer size : sizes) {
 			setUp();
@@ -49,7 +49,7 @@ public class PerformanceTest {
 
 	@Test
 	public void sendAndReceiveMessagesInQueueWithContentLengthAndPersistence() throws UnknownHostException, IOException {
-		System.out.println("With content length and persistence\n\n");
+		System.out.println("\nsendAndReceiveMessagesInQueueWithContentLengthAndPersistence\n");
 		List<Integer> sizes = Arrays.asList(0, 1, 10, 100, 500, 1000, 10000, 100000, 500000, 1000000);
 		for (Integer size : sizes) {
 			setUp();
@@ -63,9 +63,8 @@ public class PerformanceTest {
 
 	private void sendAndReceiveMessagesInQueueOfSize(int size, Map<String, String> headers) throws UnknownHostException, IOException {
 		// Build frame
-		long expireTime = System.currentTimeMillis() + 10000; // Expires in 10s
+		long expireTime = System.currentTimeMillis() + 1200000; // Expires in 2mn
 		Frame frame = FrameBuilder.send()//
-				.header("persistent", "false")//
 				.header("expires", Long.toString(expireTime))//
 				.message(of(size))//
 				.to("/queue/test");
@@ -82,55 +81,30 @@ public class PerformanceTest {
 	}
 
 	private void receive(int size) {
+		long nbOfMessages = computeNumberOfMessages(size);
 		long start = System.nanoTime();
-		for (int i = 0; i < NB_OF_MESSAGES; i++) {
+		for (int i = 0; i < nbOfMessages; i++) {
 			connectionReceiver.receive();
 		}
 		long elapsedInMillis = (System.nanoTime() - start) / 1000000;
-		System.out.println("Receive " + NB_OF_MESSAGES + " messages of " + size + "bytes in " + elapsedInMillis + "ms - " + ((NB_OF_MESSAGES * 1000) / elapsedInMillis) + "msg/s - "
-				+ ((NB_OF_MESSAGES * size * 1000) / elapsedInMillis) + "bps");
+		System.out.println("Receive " + nbOfMessages + " messages of " + size + "bytes in " + elapsedInMillis + "ms - " + ((nbOfMessages * 1000) / elapsedInMillis) + "msg/s - "
+				+ ((nbOfMessages * size * 1000) / elapsedInMillis) + " Bps");
 	}
 
 	private void send(Frame frame, int size) {
+		long nbOfMessages = computeNumberOfMessages(size);
 		long start = System.nanoTime();
-		for (int i = 0; i < NB_OF_MESSAGES; i++) {
+		for (int i = 0; i < nbOfMessages; i++) {
 			connectionSender.send(frame);
 		}
 		long elapsedInMillis = (System.nanoTime() - start) / 1000000;
-		System.out.println("Send " + NB_OF_MESSAGES + " messages of " + size + "bytes in " + elapsedInMillis + "ms - " + ((NB_OF_MESSAGES * 1000) / elapsedInMillis) + "msg/s - "
-				+ ((NB_OF_MESSAGES * size * 1000) / elapsedInMillis) + "bps");
-
-	}
-
-	@Test
-	public void should_receive_10000_messages_in_topic() throws UnknownHostException, IOException, InterruptedException {
-		Connection connection1 = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 5000);
-		final Connection connection2 = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 5000);
-		connections.add(connection1);
-		connections.add(connection2);
-		FrameBuilder.subscribe(connection2).forClient("receiver").to("/topic/test");
-		Thread.sleep(3000);
-		final long start = System.nanoTime();
-		new Thread(new Runnable() {
-
-			@Override
-			public void run() {
-				for (int i = 0; i < NB_OF_MESSAGES; i++) {
-					connection2.receive();
-				}
-				long elapsed = (System.nanoTime() - start) / 1000000;
-				System.out.println("should_receive_10000_messages_in_topic=" + elapsed + "ms - " + ((NB_OF_MESSAGES * 1000) / elapsed) + "msg/s");
-			}
-		}).start();
-		for (int i = 0; i < NB_OF_MESSAGES; i++) {
-			FrameBuilder.send(connection1).header("persistent", "false").message(CONTENT).to("/topic/test");
-		}
-		Thread.sleep(5000);
+		System.out.println("Send " + nbOfMessages + " messages of " + size + " bytes in " + elapsedInMillis + "ms - " + (elapsedInMillis == 0 ? "infini" : ((nbOfMessages * 1000) / elapsedInMillis))
+				+ "msg/s - " + (elapsedInMillis == 0 ? "infini" : ((nbOfMessages * size * 1000) / elapsedInMillis) + " Bps"));
 	}
 
 	public void setUp() {
-		connectionSender = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 10000);
-		connectionReceiver = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 10000);
+		connectionSender = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 50000);
+		connectionReceiver = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 50000);
 		connections.add(connectionSender);
 		connections.add(connectionReceiver);
 		FrameBuilder.subscribe(connectionReceiver).forClient("receiver").to("/queue/test");
@@ -148,5 +122,15 @@ public class PerformanceTest {
 		byte[] messageBytes = new byte[size];
 		Arrays.fill(messageBytes, "a".getBytes()[0]);
 		return new String(messageBytes);
+	}
+
+	/**
+	 * Compute the number of messages depending on the size of each messages.
+	 * 
+	 * @param size
+	 * @return
+	 */
+	private long computeNumberOfMessages(int size) {
+		return Math.min(MAX_NUMBER_OF_MESSAGES, (MAX_SIZE_OF_QUEUE_IN_BYTES / Math.max(1, size)));
 	}
 }

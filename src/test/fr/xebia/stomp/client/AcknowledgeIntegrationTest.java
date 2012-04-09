@@ -36,7 +36,7 @@ public class AcknowledgeIntegrationTest {
 		receiverConnectionBis.subscribe().clientAcknowledge().forClient("receiverBis").to("/queue/test");
 		Frame receivedUnacknowledgedFrame = receiverConnectionBis.receive();
 		System.out.println(receivedUnacknowledgedFrame);
-		receiverConnectionBis.ack().message(messageId).to(subscription);
+		receiverConnectionBis.ack().messageId(messageId).to(subscription);
 
 		// Assert
 		// FIXME Wait with a Timeout
@@ -59,7 +59,7 @@ public class AcknowledgeIntegrationTest {
 		receiverConnectionBis.subscribe().clientAcknowledge().forClient("receiverBis").to("/queue/test");
 		Frame receivedUnacknowledgedFrame = receiverConnectionBis.receive();
 		System.out.println(receivedUnacknowledgedFrame);
-		receiverConnectionBis.ack().message(messageId).to(subscription);
+		receiverConnectionBis.ack().messageId(messageId).to(subscription);
 
 		// Assert
 		// FIXME Wait with a Timeout

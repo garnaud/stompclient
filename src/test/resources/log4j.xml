@@ -28,7 +28,7 @@
    <!-- Setup the Root category -->
    <!-- ======================= -->
    <root>
-    <appender-ref ref="CONSOLE"/>
     <level value="ERROR"/> 
+    <appender-ref ref="CONSOLE"/>
    </root>
 </log4j:configuration>
