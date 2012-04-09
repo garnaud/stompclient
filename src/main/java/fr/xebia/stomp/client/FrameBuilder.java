@@ -262,8 +262,13 @@ public class FrameBuilder {
 			this.frameBuilder = frameBuilder;
 		}
 
-		public AckBuilder message(String messageId) {
+		public AckBuilder messageId(String messageId) {
 			frameBuilder.header("message-id", messageId);
+			return this;
+		}
+
+		public AckBuilder transaction(String transaction) {
+			frameBuilder.header("transaction", transaction);
 			return this;
 		}
 
