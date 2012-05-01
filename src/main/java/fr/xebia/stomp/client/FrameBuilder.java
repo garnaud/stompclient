@@ -55,8 +55,8 @@ public class FrameBuilder {
 		return this;
 	}
 
-	public FrameBuilder payload(String payload) {
-		this.message = payload;
+	public FrameBuilder message(String message) {
+		this.message = message;
 		return this;
 	}
 
@@ -108,6 +108,20 @@ public class FrameBuilder {
 			}
 			LOGGER.debug("Connected to {}:{}, the CONNECTED frame from server is {}", new Object[] { host, port, serverResponse });
 			return localConnection;
+		}
+	}
+
+	// Disconnect
+	public static class DisconnectBuilder {
+		private final FrameBuilder frameBuilder;
+
+		protected DisconnectBuilder(FrameBuilder messageBuilder) {
+			this.frameBuilder = messageBuilder;
+		}
+
+		public Frame on(String receipt) {
+			frameBuilder.header.put("receipt", receipt);
+			return frameBuilder.end();
 		}
 	}
 
@@ -169,6 +183,10 @@ public class FrameBuilder {
 
 	public static UnsubscribeBuilder unsubscribe() {
 		return new UnsubscribeBuilder(new FrameBuilder().command(Command.UNSUBSCRIBE));
+	}
+
+	public static UnsubscribeBuilder unsubscribe(Connection connection) {
+		return new UnsubscribeBuilder(new FrameBuilder(connection).command(Command.UNSUBSCRIBE));
 	}
 
 	public static class SubscribeBuilder {
@@ -236,8 +254,7 @@ public class FrameBuilder {
 		 * @return the built frame
 		 */
 		public Frame to(String destination) {
-			frameBuilder.header("destination", destination);
-			return frameBuilder.end();
+			return frameBuilder.header("destination", destination).end();
 		}
 	}
 
@@ -248,7 +265,7 @@ public class FrameBuilder {
 			this.frameBuilder = frameBuilder;
 		}
 
-		public Frame forClient(String clientId) {
+		public Frame to(String clientId) {
 			return frameBuilder.header("id", clientId).end();
 		}
 

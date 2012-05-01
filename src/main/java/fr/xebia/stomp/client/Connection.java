@@ -121,17 +121,7 @@ public class Connection implements Closeable {
 	}
 
 	public void unsubscribe(String clientId) {
-		try {
-			Frame frame = FrameBuilder.unsubscribe().forClient(clientId);
-			socket.getOutputStream().write(frame.getBytes());
-			socket.getOutputStream().flush();
-		} catch (IOException e) {
-			if (LOGGER.isDebugEnabled()) {
-				LOGGER.error("Problem during unsubscription", e);
-			} else {
-				LOGGER.warn("Problem during unsubscription", e.getMessage());
-			}
-		}
+		FrameBuilder.unsubscribe(this).to(clientId);
 	}
 
 	public Frame receive() {
@@ -178,7 +168,6 @@ public class Connection implements Closeable {
 				return stompInputStream.read();
 			}
 		});
-
 	}
 
 	@Override

@@ -139,7 +139,7 @@ public class Frame {
 	private boolean equalsHeaderOf(Frame other) {
 		boolean result = true;
 		for (Map.Entry<String, String> headerEntry : header.entrySet()) {
-			result &= other.header.containsKey(headerEntry.getKey()) && (headerEntry.getValue().equals(other.header.get(headerEntry.getValue())));
+			result &= other.header.containsKey(headerEntry.getKey()) && (headerEntry.getValue().equals(other.header.get(headerEntry.getKey())));
 		}
 		return result;
 	}
