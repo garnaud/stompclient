@@ -256,7 +256,12 @@ public class FrameBuilder {
 		public Frame to(String destination) {
 			return frameBuilder.header("destination", destination).end();
 		}
-	}
+
+        public SubscribeBuilder persistent() {
+            frameBuilder.header("persistent", "true");
+            return this;
+        }
+    }
 
 	public static class UnsubscribeBuilder {
 		private FrameBuilder frameBuilder;

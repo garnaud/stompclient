@@ -24,7 +24,7 @@ public class TopicPerformanceTest {
 	private Connection connectionReceiver;
 
 	@Test
-	public void should_receive_10000_messages_in_topic() throws UnknownHostException, IOException, InterruptedException {
+	public void should_receive_10000_messages_in_topic() throws IOException, InterruptedException {
 		Connection connection1 = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 5000);
 		final Connection connection2 = Connection.login("admin").passcode("password").to("localhost", 61613, SocketParam.TIMEOUT, 5000);
 		connections.add(connection1);
