@@ -1,7 +1,6 @@
 package fr.xebia.stomp.client;
 
 import fr.xebia.stomp.client.Connection.SocketParam;
-import org.junit.After;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -22,10 +21,9 @@ public class QueuePerformanceTest {
         System.out.println("\nsendAndReceiveMessagesInQueue\n");
         List<Integer> sizes = Arrays.asList(0, 1, 10, 100, 500, 1000, 10000, 100000, 500000, 1000000);
         for (Integer size : sizes) {
-            System.out.println("Test size " + size);
             setUp();
             sendAndReceiveMessagesInQueueOfSize(size, null);
-            tearDown();
+            close();
         }
     }
 
@@ -38,7 +36,7 @@ public class QueuePerformanceTest {
             Map<String, String> headers = new HashMap<String, String>();
             headers.put("content-length", String.valueOf(size));
             sendAndReceiveMessagesInQueueOfSize(size, headers);
-            tearDown();
+            close();
         }
     }
 
@@ -52,7 +50,7 @@ public class QueuePerformanceTest {
             headers.put("content-length", String.valueOf(size));
             headers.put("persistent", "true");
             sendAndReceiveMessagesInQueueOfSize(size, headers);
-            tearDown();
+            close();
         }
     }
 
@@ -105,17 +103,19 @@ public class QueuePerformanceTest {
         FrameBuilder.subscribe(connectionReceiver).forClient("receiver").to("/queue/test");
     }
 
-    public void tearDown() {
+    public void close() {
         for (Connection connection : connections) {
             try {
                 connection.unsubscribe("receiver");
             } catch (Throwable e) {
                 if(!"Socket is closed".equals(e.getMessage())){
+                    e.printStackTrace();
                     fail();
                 }
             }
             connection.closeQuietly();
         }
+        connections.clear();
     }
 
     private String of(int size) {
