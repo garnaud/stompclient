@@ -8,115 +8,126 @@ import java.net.Socket;
 import java.util.HashMap;
 
 public class FrameInputStream implements Closeable {
-	private static final Logger LOGGER = LoggerFactory.getLogger(FrameInputStream.class);
-	private BufferedInputStream bufferedInputStream;
-	private boolean askingClose = false;
+    private static final Logger LOGGER = LoggerFactory.getLogger(FrameInputStream.class);
+    private BufferedReader bufferedReader;
+    private boolean askingClose = false;
 
-	public FrameInputStream(Socket socket) {
-		try {
-			this.bufferedInputStream = new BufferedInputStream(socket.getInputStream());
-		} catch (IOException e) {
-			throw new StompException(e);
-		}
-	}
+    /**
+     * Constructor.
+     *
+     * @param socket the socket which will be read through its {@code InputStream}
+     */
+    public FrameInputStream(Socket socket) {
+        try {
+            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF8"));
+        } catch (IOException e) {
+            throw new StompException(e);
+        }
+    }
 
-	public FrameInputStream(InputStream inputStream) {
-		this.bufferedInputStream = new BufferedInputStream(inputStream);
-	}
+    /**
+     * Useful for testint without socket.
+     *
+     * @param inputStream the input stream which will be read
+     */
+    protected FrameInputStream(InputStream inputStream) throws UnsupportedEncodingException {
+        this.bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF8"));
+    }
 
-	/**
-	 * Read a new frame.
-	 * 
-	 * @return the new received frame from the connection
-	 */
-	public Frame read() {
-		StringBuilder stringBuilder = null;
-		Command command;
-		HashMap<String, String> header;
-		try {
-			// Read command
-			LOGGER.trace("Read frame");
-			byte currentByte;
-			do {
-				// Skip unnecessary bytes
-				currentByte = (byte) bufferedInputStream.read();
-			} while (((Frame.ENDLINE_BYTE == currentByte) || (Frame.NULL_BYTE == currentByte)) && !askingClose);
-			stringBuilder = new StringBuilder();
-			LOGGER.trace("Start read " + new String(new byte[] { currentByte }));
+    /**
+     * Read a new frame.
+     *
+     * @return the new received frame from the connection
+     */
+    public Frame read() {
+        StringBuilder stringBuilder = new StringBuilder();
+        Command command;
+        HashMap<String, String> header;
+        try {
+            // Read command
+            LOGGER.trace("Read frame");
+            byte currentByte;
+            do {
+                // Skip unnecessary bytes
+                currentByte = (byte) bufferedReader.read();
+            } while (!askingClose && ((Frame.ENDLINE_BYTE == currentByte) || (Frame.NULL_BYTE == currentByte)));
 
-			do {
-				stringBuilder.append((char) currentByte);
-				currentByte = (byte) bufferedInputStream.read();
-			} while ((Frame.ENDLINE_BYTE != currentByte) && !askingClose);
-			command = Command.valueOf(stringBuilder.toString());
-			LOGGER.trace("Command " + command);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Start read " + new String(new byte[]{currentByte}));
+            }
 
-			// Read header
-			header = new HashMap<String, String>();
-			while (!askingClose) {
-				currentByte = (byte) bufferedInputStream.read();
-				if (Frame.ENDLINE_BYTE != currentByte) {
-					String key = "";
-					stringBuilder = new StringBuilder();
-					do {
-						if (Frame.HEADER_SEPARATOR_BYTE == currentByte) {
-							key = stringBuilder.toString();
-							stringBuilder = new StringBuilder();
-						} else {
-							stringBuilder.append((char) currentByte);
-						}
-						currentByte = (byte) bufferedInputStream.read();
-					} while ((Frame.ENDLINE_BYTE != currentByte) && !askingClose);
-					header.put(key, stringBuilder.toString());
-				} else {
-					break;
-				}
-			}
-			LOGGER.trace("header " + header);
+            command = Command.valueOf((char) currentByte + bufferedReader.readLine());
+            LOGGER.trace("Command {}", command);
 
-			// Read message
-			if (header.containsKey("content-length")) {
-				stringBuilder = new StringBuilder();
-				int length = Integer.valueOf(header.get("content-length"));
-				byte[] buffer = new byte[length];
-				int read = 0;
-				ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-				while ((read != -1) && (byteArrayOutputStream.size() < length)) {
-					read = bufferedInputStream.read(buffer, 0, length - byteArrayOutputStream.size());
-					byteArrayOutputStream.write(buffer, 0, read);
-				}
-				stringBuilder.append(byteArrayOutputStream.toString());
-			} else {
-				stringBuilder = new StringBuilder();
-				currentByte = (byte) bufferedInputStream.read();
-				while ((Frame.NULL_BYTE != currentByte) && !askingClose) {
-					stringBuilder.append((char) currentByte);
-					currentByte = (byte) bufferedInputStream.read();
-				}
-			}
-			LOGGER.trace("message " + stringBuilder);
-		} catch (IOException e) {
-			throw new StompException(e);
-		} catch (IllegalArgumentException e) {
-			throw new StompException("May be a problem occurs with parsing. Current string builder is '" + stringBuilder + "'", e);
-		}
-		return new Frame(command, header, stringBuilder.toString());
-	}
+            // Read header
+            header = new HashMap<String, String>();
+            char currentChar;
+            while (!askingClose) {
+                currentChar = (char) bufferedReader.read();
+                if ('\n' != currentChar && '\r' != currentChar) {
+                    do {
+                        if (':' == currentChar) {
+                            header.put(stringBuilder.toString(), bufferedReader.readLine());
+                            stringBuilder=new StringBuilder();
+                            break;
+                        } else {
+                            stringBuilder.append(currentChar);
+                            LOGGER.trace("'{}'", currentChar);
+                            currentChar = (char) bufferedReader.read();
+                        }
+                    } while (!askingClose);
+                } else {
+                    break;
+                }
+            }
+            LOGGER.trace("header '{}'", header.entrySet().iterator().next().getKey());
 
-	@Override
-	public void close() throws IOException {
-		askingClose = true;
-		if (bufferedInputStream != null) {
-			bufferedInputStream.close();
-		}
-	}
+            // Read message
+            if (header.containsKey("content-length")) {
+                int length = Integer.valueOf(header.get("content-length"));
+                LOGGER.trace("Content length is setted to {}",length);
+                stringBuilder = new StringBuilder(length);
+                char[] buffer = new char[length];
+                int read = 0;
+                int totalRead = 0;
+                while (read != -1 && totalRead < length) {
+                    read = bufferedReader.read(buffer, totalRead, length-totalRead);
+                    if(read!=-1){
+                        totalRead+=read;
+                    }
+                }
+                stringBuilder.append(buffer);
+            } else {
+                stringBuilder = new StringBuilder();
+                currentChar = (char) bufferedReader.read();
+                while (!askingClose && ('\00' != currentChar)) {
+                    stringBuilder.append(currentChar);
+                    currentChar = (char) bufferedReader.read();
+                }
+            }
+            LOGGER.trace("message {}", stringBuilder);
+        } catch (IOException e) {
+            throw new StompException(e);
+        } catch (IllegalArgumentException e) {
+            throw new StompException("May be a problem occurs with parsing. Current string builder is '" + stringBuilder + "'", e);
+        }
+        return new Frame(command, header, stringBuilder.toString());
+    }
 
-	public void closeQuietly() {
-		try {
-			close();
-		} catch (IOException e) {
-			LOGGER.warn("can't close connection", e);
-		}
-	}
+    @Override
+    public void close() throws IOException {
+        askingClose = true;
+        if (bufferedReader != null) {
+            bufferedReader.close();
+        }
+    }
+
+    public void closeQuietly() {
+        try {
+            close();
+        } catch (IOException e) {
+            LOGGER.warn("can't close connection: {}", e.getMessage());
+        }
+    }
 
 }

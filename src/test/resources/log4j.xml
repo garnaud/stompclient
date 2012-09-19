@@ -9,7 +9,7 @@
    <!-- APPENDER 1: output messages to the console -->
    <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
       <param name="Target" value="System.out"/>
-      <param name="Threshold" value="ERROR"/>
+      <param name="Threshold" value="TRACE"/>
       <layout class="org.apache.log4j.PatternLayout">
          <!-- The default pattern: Date Priority [Category] Message\n -->
          <param name="ConversionPattern" value="%d{ABSOLUTE} %-5p (%10F:%L) %m%n"/>
@@ -18,6 +18,9 @@
     
    <!-- Limit the org.springframework category to INFO as its DEBUG is verbose -->
   <logger name="fr.xebia.stomp.client.StompInputStream">
+  	<level value="INFO"/>
+  </logger>
+  <logger name="fr.xebia.stomp.client.FrameInputStream">
   	<level value="INFO"/>
   </logger>
   <logger name="fr.xebia.stomp.client.Connection">
